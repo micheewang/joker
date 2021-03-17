@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8" />
+  <title>1</title>
+  <meta http-equiv="X-UA-Compatible" content="IE=EmulateIE8" />
+  <style>
+    * {
+      padding: 0;
+      margin: 0;
+    }
+
+    #content {
+      width: 100vw;
+      height: 100vh;
+      box-sizing: border-box;
+      padding: 40px;
+    }
+
+    #point {
+      position: absolute;
+      top: 15px;
+      right: 30px;
+      min-width: 260px;
+      background: rgba(0, 0, 0, .4);
+      color: #ffffff;
+    }
+  </style>
+</head>
+
+<body>
+  <span id="point"></span>
+  <div id="content"></div>
+</body>
+<script src="./geoJson.js"></script>
+<script>
+  var content = document.getElementById('content')
+  var point = document.getElementById('point');
+
+  // 10000 山东省 山东省2 江苏省
+  fetch(`./mapJson/江苏省.json`).then((res) => {
+    return res.json()
+  }).then((json) => {
+    var geo = new Geo({
+      width: window.innerWidth - 80,
+      height: window.innerHeight - 80,
+      data: json,
+    });
+    geo.draw();
+    geo.on('mousemove', function(e) {
+      var coordinate = e.coordinate.map(v => Math.floor(v * 100) / 100);
+      for (var i of e.children) {
+        if (i.isContent(coordinate)) {
+          geo.canvas.style.cursor = 'pointer'
+          point.innerHTML = `${i.feature.properties.name}:` + coordinate.join(' , ');
+          return
+        }
+      }
+      geo.canvas.style.cursor = 'auto'
+    })
+    return geo
+  }).then(geo => {
+    document.getElementById('content').appendChild(geo.canvas);
+    window.geo = geo;
+    console.log(geo);
+  })
+</script>
+
+</html>

@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8" />
+  <title>long long ago</title>
+  <meta name="viewport">
+  <meta http-equiv="X-UA-Compatible" content="IE=EmulateIE8" />
+  <script src="./alone.js"></script>
+  <style>
+    body {
+      padding: 0;
+      margin: 0;
+    }
+
+    ul {
+      margin: 0;
+      padding: 0;
+      height: 300px;
+      overflow: auto;
+      list-style: none;
+      font-size: 10px;
+    }
+
+    li {
+      line-height: 30px;
+      background-color: #ececec;
+      border-radius: 4px;
+      text-align: center;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+
+
+    }
+
+    .even {
+      /* line-height: 50px; */
+      background: #ddd;
+    }
+  </style>
+</head>
+
+<body>
+  <ul></ul>
+</body>
+
+<script>
+  let ul = document.querySelector('ul');
+  console.time();
+  var al = new Alone({
+    el: ul,
+    size: 1000000,
+    // scale: 5,
+    render: function(i) {
+      return h('li', {
+        class: i % 2 ? 'even' : 'normal',
+        idx: i
+      }, [
+        h('div', ['标题' + i, h('span', 'demo')]),
+        h('div', '标题' + i),
+        h('div', '标题' + i),
+      ]);
+    },
+  });
+
+  ul.addEventListener('click', function(e) {
+    console.log(e.target.innerHTML);
+  })
+
+  console.log(al);
+
+
+
+  function h(tagName, attrs, child = []) {
+    if (!isObj(attrs)) {
+      child = attrs || [];
+      attrs = {};
+    }
+    if (child != undefined && !Array.isArray(child)) child = [child];
+
+    let el = document.createElement(tagName);
+
+    for (let attrName in attrs) el.setAttribute(attrName, attrs[attrName]);
+
+    if (child) {
+      for (let i of child) {
+        if (i instanceof Element) {
+          el.appendChild(i);
+        } else {
+          el.appendChild(document.createTextNode(i));
+        }
+      }
+    }
+    return el;
+  }
+
+  function isObj(v) {
+    return v != null && !Array.isArray(v) && typeof v === 'object'
+  }
+</script>
+
+</html>

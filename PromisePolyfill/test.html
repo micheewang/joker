@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8" />
+  <title>1</title>
+  <meta http-equiv="X-UA-Compatible" content="IE=EmulateIE8" />
+  <script src="./promise_polyfill.js"></script>
+</head>
+
+<body>
+</body>
+<script>
+  var p = new Promise(function(resolve, reject) {
+    setTimeout(function() {
+      resolve(1)
+    }, 1000)
+  })
+
+
+  var p1 = p.then(function(res) {
+    console.log(res)
+    return new Promise(function(resolve,reject) {
+      setTimeout(function(){
+        resolve(2)
+      },2000)
+    })
+  })
+
+  var pc = p1.catch(function(res) {
+    console.error(res)
+  })
+
+  var p2 = pc.then(function(res) {
+    console.log(res)
+    return 3
+  }).finally(function() {
+    console.log('始终执行')
+  })
+
+  console.log(p, p1, pc, p2)
+</script>
+
+</html>
