@@ -1,47 +1,50 @@
-(function(global, factory) {
+(function (global, factory) {
   //TODO promise polyfill
   factory(global);
-})(this, function(exports) {
+})(this, function (exports) {
   'use strict';
 
   var slice = Array.prototype.slice;
 
   //do nothing
-  var noop = function noop() {}
+  var noop = function noop() {};
 
   //return self
   var identify = function identify(a) {
-    return a
-  }
+    return a;
+  };
 
-  var $typeof = function(v) {
-    return typeof v
-  }
+  var $typeof = function (v) {
+    return typeof v;
+  };
 
   //Throw an exception when 'a' equal false
-  var assert = console.assert ? console.assert : function assert(a, msg) {
-    if (a === false) throw new Error(msg)
-  }
+  var assert = console.assert
+    ? console.assert
+    : function assert(a, msg) {
+        if (a === false) throw new Error(msg);
+      };
 
   //placeholder
-  var _ = Symbol ?
-    Symbol('report.chart.either._') : {
-      Symbol: 'report.chart.either._'
-    };
+  var _ = Symbol
+    ? Symbol('report.chart.either._')
+    : {
+        Symbol: 'report.chart.either._',
+      };
 
   //currying
   function curry() {
     var fn = arguments[0];
     var _args = slice.call(arguments, 1);
-    return function() {
-      var args = slice.call(arguments)
+    return function () {
+      var args = slice.call(arguments);
       var useArgs = [];
       for (var i = 0, len = _args.length; i < len; i++) {
         var arg = _args[i];
         useArgs.push(arg !== _ ? arg : args.shift());
       }
-      fn.apply(this, useArgs)
-    }
+      fn.apply(this, useArgs);
+    };
   }
 
   //promise life cycle
@@ -49,7 +52,7 @@
     fulfilled: 'fulfilled',
     pending: 'pending',
     rejected: 'rejected',
-  }
+  };
   Object.freeze($state);
 
   //when promise state changed, this key save the result
@@ -57,9 +60,13 @@
   //promise state
   var $$State = '[[PromiseState]]';
 
+  function isPro(c) {
+    return c instanceof _Promise;
+  }
+
   //Constructor
-  var _Promise = function(executor) {
-    assert(this instanceof _Promise, 'Constructor Promise requires \'new\'');
+  var _Promise = function (executor) {
+    assert(isPro(this), "Constructor Promise requires 'new'");
     assert($typeof(executor) === 'function', 'parameter 1 must be a function');
 
     this[$$State] = $state.pending;
@@ -73,12 +80,23 @@
     } catch (err) {
       reject(err);
     }
-  }
+  };
 
   function getExecutor(context, state) {
-    return function(result) {
-      changeStatus(context, state, result) || trigger(context);
-    }
+    return function (result) {
+      if (isPro(result)) {
+        result.then(
+          function (result) {
+            changeStatus(context, $state.fulfilled, result) || trigger(context);
+          },
+          function (result) {
+            changeStatus(context, $state.rejected, result) || trigger(context);
+          }
+        );
+      } else {
+        changeStatus(context, state, result) || trigger(context);
+      }
+    };
   }
 
   //change prom state
@@ -97,41 +115,50 @@
     var state = prom[$$State] === $state.fulfilled;
     var queen = state ? prom._resolveQueen : prom._rejectQueen;
     var cb;
-    while (cb = queen.shift()) {
-      cb(prom[$$result])
+    while ((cb = queen.shift())) {
+      cb(prom[$$result]);
     }
   }
 
-
-  _Promise.prototype.then = function(onFulfilled, onRejected) {
-    assert($typeof(onFulfilled) === 'function', 'onFulfilled must be a function');
-    assert(['function', 'undefined'].indexOf($typeof(onFulfilled)) > -1, 'onRejected must be a function');
+  _Promise.prototype.then = function (onFulfilled, onRejected) {
+    assert(
+      $typeof(onFulfilled) === 'function',
+      'onFulfilled must be a function'
+    );
+    assert(
+      ['function', 'undefined'].indexOf($typeof(onFulfilled)) > -1,
+      'onRejected must be a function'
+    );
 
     var prom = new this.constructor(noop);
     handler(onFulfilled, onRejected, this, prom);
-    return prom
-  }
+    return prom;
+  };
 
-  _Promise.prototype.catch = function(onRejected) {
+  _Promise.prototype.catch = function (onRejected) {
     assert($typeof(onRejected) === 'function', 'onRejected must be a function');
 
     var prom = new this.constructor(noop);
     handler(identify, onRejected, this, prom);
     return prom;
-  }
+  };
 
-  _Promise.prototype.finally = function(onFinally) {
+  _Promise.prototype.finally = function (onFinally) {
     assert($typeof(onFinally) === 'function', 'onFinally must be a function');
-    var f = function f(result) {
+    var f = function f() {
       onFinally();
-    }
+    };
     return this.then(f, f);
-  }
+  };
 
   //Correlation prev and next promise
   function handler(onFulfilled, onRejected, prevProm, nextProm) {
-    if (onFulfilled === undefined) onFulfilled = identify;
-    if (onRejected === undefined) onRejected = identify;
+    if (onFulfilled === undefined) {
+      onFulfilled = identify;
+    }
+    if (onRejected === undefined) {
+      onRejected = identify;
+    }
 
     var changeNextResolve = curry(changeStatus, nextProm, $state.fulfilled, _);
     var changeNextReject = curry(changeStatus, nextProm, $state.rejected, _);
@@ -143,69 +170,108 @@
     trigger(prevProm);
 
     function correlation(handler) {
-      return function(result) {
+      return function (result) {
         var value = handler(result);
-        if (value instanceof _Promise) {
-          value.then(function(res) {
-            changeNextResolve(res);
-            triggerNext();
-          }, function(res) {
-            changeNextReject(res);
-            triggerNext();
-          })
+        if (isPro(value)) {
+          value.then(
+            function (res) {
+              changeNextResolve(res);
+              triggerNext();
+            },
+            function (res) {
+              changeNextReject(res);
+              triggerNext();
+            }
+          );
         } else {
           changeNextResolve(value);
           triggerNext();
         }
-      }
+      };
     }
   }
-  //--------------------end Promise.prototype--------------------
-
+  //--------------------end Promise.then--------------------
 
   //--------------------static methods--------------------
-  _Promise.resolve = function(result) {
-    return new Promise(function(resolve) {
-      resolve(result)
-    })
-  }
-
-  _Promise.reject = function(result) {
-    return new Promise(function(resolve, reject) {
-      reject(result)
-    })
-  }
-
-  _Promise.race = function(list) {
-    //assert
-    var context = this;
-    return new this.constructor(function(resolve, reject) {
-      for (var p of list) {
-        context.resolve(p).then(function(res) {
-          resolve(res)
-        }, function(err) {
-          reject(err)
+  _Promise.resolve = function (result) {
+    return !isPro(result)
+      ? new _Promise(function (resolve) {
+          resolve(result);
         })
-      }
-    })
-  }
+      : result;
+  };
 
-  //TODO  ------------------------------------------------------
-  _Promise.all = function(list) {
-    var context = this;
-    return new this.constructor((resolve, reject) => {
+  _Promise.reject = function (result) {
+    return !isPro(result)
+      ? new _Promise(function (resolve, reject) {
+          reject(result);
+        })
+      : result;
+  };
+
+  _Promise.race = function (list) {
+    //assert
+    return new _Promise(function (resolve, reject) {
+      for (var p of list) {
+        context.resolve(p).then(
+          function (res) {
+            resolve(res);
+          },
+          function (err) {
+            reject(err);
+          }
+        );
+      }
+    });
+  };
+
+  _Promise.all = function (list) {
+    return new _Promise(function (resolve, reject) {
       var values = [];
       var count = 0;
-      
-    })
-  }
+      for (var i = 0; i < list.length; i++) {
+        const node = _Promise.resolve(list[i]);
+        (function (i) {
+          node.then(
+            function (value) {
+              count++;
+              values[i] = value;
+              dispatch();
+            },
+            function () {
+              reject();
+            }
+          );
+        })(i);
+      }
 
-  _Promise.any = function() {
-    var context = this;
-    return new this.constructor((resolve, reject) => {})
-  }
+      function dispatch() {
+        if (count === list.length) {
+          resolve(values);
+        }
+      }
+    });
+  };
 
-
+  _Promise.any = function (list) {
+    return new _Promise(function (resolve, reject) {
+      let count;
+      for (let i = 0; i < list.length; i++) {
+        const node = _Promise.resolve(list[i]);
+        node.then(
+          function (value) {
+            resolve(value);
+          },
+          function () {
+            count++;
+            if (count === list.length) {
+              reject();
+            }
+          }
+        );
+      }
+    });
+  };
 
   exports.Promise = _Promise;
-})
+});
